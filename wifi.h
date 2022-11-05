@@ -24,8 +24,12 @@ bool                       set_hostname                (const std::string & host
 // ssid, signal-strength (in dB) pairs
 std::map<std::string, int> scan_access_points          ();
 
-// timeout in number of 100ms intervals
+// targets: ssid, password
+// timeout in number of 100ms intervals: must be at least the number of ssid/password-pairs in 'targets'
 // callback: interval_nr, max_nr_set, can return false to abort
-bool                       try_connect                 (const std::string ssid, const std::string password, const int timeout, std::function<bool(int, int)> & progress_indicator);
+bool                       try_connect                 (const std::vector<std::pair<std::string, std::string> > & targets,
+							const std::map<std::string, int> & scan_results,
+							const int timeout,
+							std::function<bool(int, int)> & progress_indicator);
 
 bool                       wifi_disconnect             ();

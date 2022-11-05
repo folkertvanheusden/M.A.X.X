@@ -1,5 +1,7 @@
 #include <map>
 #include <string>
+#include <vector>
+#include <utility>
 
 #include <ESP8266WiFi.h>
 
@@ -65,39 +67,64 @@ std::optional<std::string> select_best_access_point(const std::map<std::string, 
 	return best_ssid;
 }
 
-// timeout in number of 100ms intervals
-// callback: interval_nr, max_nr_set, can return false to abort
-bool try_connect(const std::string ssid, const std::string password, const int timeout, std::function<bool(int, int)> & progress_indicator)
+bool try_connect(const std::vector<std::pair<std::string, std::string> > & targets, const std::map<std::string, int> & scan_results, const int timeout, std::function<bool(int, int, std::string)> & progress_indicator)
 {
-	if (!connect_to_access_point(ssid, password))
-		return false;
+	// scan through selected & scan-results and order by signal strength
+	std::vector<std::tuple<std::string, std::string, int> > use;
 
-	int nr = 0;
+	for(auto & target : targets) {
+		auto scan_result = scan_results.find(target.first);
 
-	for(;;) {
-		auto status = check_wifi_connection_status();
-
-		if (status == CS_CONNECTED)
-			return true;
-
-		if (status == CS_FAILURE) {
-			if (!connect_to_access_point(ssid, password))
-				break;
-
-			nr = 0;
-		}
-
-		if (progress_indicator(nr, timeout) == false)
-			break;
-
-		nr++;
-
-		delay(100);
+		if (scan_result != scan_results.end())
+			use.push_back({ target.first, target.second, scan_result->second });
 	}
 
-	WiFi.disconnect();
+	std::sort(use.begin(), use.end(), [](auto & a, auto & b) { return std::get<2>(b) < std::get<2>(a); });
 
-	return false;
+	int  nr               = 0;
+
+	bool connecting_state = 0;
+
+        bool ok               = false;
+
+	while(nr < timeout) {
+		bool sleep = false;
+
+		if (connecting_state == false) {
+			if (connect_to_access_point(std::get<0>(use.at(nr)), std::get<1>(use.at(nr))))
+				connecting_state = true;
+			else
+				nr++;
+		}
+		else {
+			auto status = check_wifi_connection_status();
+
+			if (status == CS_CONNECTED) {
+				ok = true;
+
+				break;
+			}
+
+			if (status == CS_FAILURE) {
+				nr++;
+
+				wifi_disconnect();
+
+				connecting_state = false;
+			}
+			else {
+				sleep = true; // no error, just waiting
+			}
+		}
+
+		if (progress_indicator(nr, timeout, std::get<0>(use.at(nr))) == false)
+			break;
+
+		if (sleep)
+			delay(100);
+	}
+
+	return ok;
 }
 
 bool wifi_disconnect()
