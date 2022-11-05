@@ -17,6 +17,7 @@ connect_status_t           check_wifi_connection_status();
 std::optional<std::string> select_best_access_point    (const std::map<std::string, int> & list);
 
 //// main functions
+void                       enable_wifi_debug           ();
 
 /// call this before invoking any other wifi function
 bool                       set_hostname                (const std::string & hostname);

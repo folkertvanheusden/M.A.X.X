@@ -8,11 +8,23 @@
 #include "wifi.h"
 
 
+bool debug = false;
+
 bool set_hostname(const std::string & hostname)
 {
 	WiFi.hostname(hostname.c_str());
 
 	return false;
+}
+
+void start_wifi()
+{
+	 WiFi.mode(WIFI_AP_STA);
+}
+
+void enable_wifi_debug()
+{
+	debug = true;
 }
 
 // returns a list of SSIDs + signal strengths
@@ -22,8 +34,12 @@ std::map<std::string, int> scan_access_points()
 
 	int n_networks = WiFi.scanNetworks();
 
-	for(int i=0; i<n_networks; i++)
+	for(int i=0; i<n_networks; i++) {
 		out.insert({ WiFi.SSID(i).c_str(), WiFi.RSSI(i) });
+
+		if (debug)
+			printf("%s: %d\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+	}
 
 	return out;
 }
@@ -91,6 +107,9 @@ bool try_connect(const std::vector<std::pair<std::string, std::string> > & targe
 		bool sleep = false;
 
 		if (connecting_state == false) {
+			if (debug)
+				printf("Connecting to %s\n", std::get<0>(use.at(nr)).c_str());
+
 			if (connect_to_access_point(std::get<0>(use.at(nr)), std::get<1>(use.at(nr))))
 				connecting_state = true;
 			else
@@ -100,12 +119,18 @@ bool try_connect(const std::vector<std::pair<std::string, std::string> > & targe
 			auto status = check_wifi_connection_status();
 
 			if (status == CS_CONNECTED) {
+				if (debug)
+					printf("Connected\n");
+
 				ok = true;
 
 				break;
 			}
 
 			if (status == CS_FAILURE) {
+				if (debug)
+					printf("Connection failed");
+
 				nr++;
 
 				wifi_disconnect();
