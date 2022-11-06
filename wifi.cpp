@@ -34,15 +34,14 @@ void enable_wifi_debug()
 	debug = true;
 }
 
-// returns a list of SSIDs + signal strengths
-std::map<std::string, int> scan_access_points()
+std::map<std::string, std::tuple<int, uint8_t, int> > scan_access_points()
 {
-	std::map<std::string, int> out;
+	std::map<std::string, std::tuple<int, uint8_t, int> > out;
 
 	int n_networks = WiFi.scanNetworks();
 
 	for(int i=0; i<n_networks; i++) {
-		out.insert({ WiFi.SSID(i).c_str(), WiFi.RSSI(i) });
+		out.insert({ WiFi.SSID(i).c_str(), { WiFi.RSSI(i), WiFi.encryptionType(i), WiFi.channel(i) } });
 
 		if (debug)
 			printf("%s: %d\r\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
@@ -92,7 +91,10 @@ std::optional<std::string> select_best_access_point(const std::map<std::string, 
 	return best_ssid;
 }
 
-bool try_connect(const std::vector<std::pair<std::string, std::string> > & targets, const std::map<std::string, int> & scan_results, const int timeout, std::function<bool(const int, const int, const std::string &)> progress_indicator)
+bool try_connect(const std::vector<std::pair<std::string, std::string> > & targets,
+	 	 const std::map<std::string, std::tuple<int, uint8_t, int> > & scan_results,
+		 const int timeout,
+		 std::function<bool(const int, const int, const std::string &)> progress_indicator)
 {
 	// scan through selected & scan-results and order by signal strength
 	std::vector<std::tuple<std::string, std::string, int> > use;
@@ -101,7 +103,7 @@ bool try_connect(const std::vector<std::pair<std::string, std::string> > & targe
 		auto scan_result = scan_results.find(target.first);
 
 		if (scan_result != scan_results.end())
-			use.push_back({ target.first, target.second, scan_result->second });
+			use.push_back({ target.first, target.second, std::get<0>(scan_result->second) });
 	}
 
 	std::sort(use.begin(), use.end(), [](auto & a, auto & b) { return std::get<2>(b) < std::get<2>(a); });

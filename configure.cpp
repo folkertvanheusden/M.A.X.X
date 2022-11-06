@@ -106,7 +106,27 @@ bool add_ssid_to_ap_list(std::vector<std::pair<std::string, std::string> > & lis
 
 void request_wifi_scan(WiFiClient & client)
 {
-	// TODO
+	auto aps_visible = scan_access_points();
+
+	DynamicJsonDocument jsonDoc(1024);
+
+	for(auto & ap : aps_visible) {
+		JsonObject entry = jsonDoc.createNestedObject();
+
+		entry["ssid"]           = ap.first;
+		entry["rssi"]           = std::get<0>(ap.second);
+		entry["encryptionType"] = std::get<1>(ap.second);
+		entry["channel"]        = std::get<2>(ap.second);
+
+		yield();
+	}
+
+	client.write("HTTP/1.0 200\r\n");
+	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+	client.print("Content-Type: application/json\r\n");
+	client.write("\r\n");
+
+	serializeJson(jsonDoc, client);
 }
 
 void request_configured_ap_list(WiFiClient & client)
@@ -128,6 +148,8 @@ void request_some_file(WiFiClient & client, const String & url)
 
 		if (ext == ".js")
 			mime_type = "text/javascript";
+		else if (ext == ".css")
+			mime_type = "text/css";
 	}
 
 	// TODO: path sanity checks
@@ -173,6 +195,10 @@ bool configure_aps()
 			continue;
 		}
 
+		Serial.println("connected");
+
+		Serial.println(millis());
+
 		// ignore request headers & retrieve rest data
 		String json_string;
 		String request;
@@ -188,6 +214,8 @@ bool configure_aps()
 			else if (!header)
 				json_string += line;
 		}
+
+		Serial.println(millis());
 
 		String cmd;
 		String url;
