@@ -107,12 +107,22 @@ bool add_ssid_to_ap_list(std::vector<std::pair<std::string, std::string> > & lis
 	return true;
 }
 
+void http_header(WiFiClient & client, const int code, const String & mime_type)
+{
+	client.print("HTTP/1.0 ");
+	client.print(code);
+	client.print("\r\n");
+
+	client.print("Server: M.A.X.X - by vanheusden.com\r\n");
+
+	client.print("Content-Type: " + mime_type + "\r\n");
+
+	client.print("\r\n");
+}
+
 void request_wifi_status(WiFiClient & client)
 {
-	client.write("HTTP/1.0 200\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: application/json\r\n");
-	client.write("\r\n");
+	http_header(client, 200, "application/json");
 
 	DynamicJsonDocument json_doc(1024);
 
@@ -145,10 +155,7 @@ void request_wifi_scan(WiFiClient & client)
 		entry["channel"]        = std::get<2>(ap.second);
 	}
 
-	client.write("HTTP/1.0 200\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: application/json\r\n");
-	client.write("\r\n");
+	http_header(client, 200, "application/json");
 
 	serializeJson(json_doc, client);
 }
@@ -167,10 +174,7 @@ void request_configured_ap_list(WiFiClient & client)
 		entry["apPass"] = aps_configured.at(i).second.empty() ? false : true;
 	}
 
-	client.write("HTTP/1.0 200\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: application/json\r\n");
-	client.write("\r\n");
+	http_header(client, 200, "application/json");
 
 	if (aps_configured.size() == 0)
 		client.write("[]");
@@ -187,10 +191,7 @@ void request_add_app(WiFiClient & client, const String & json_string)
 
 	if (add_ssid_to_ap_list(aps, json_buffer["apName"].as<std::string>(), json_buffer["apPass"].as<std::string>())) {
 		if (save_configured_ap_list(aps)) {
-			client.write("HTTP/1.0 200\r\n");
-			client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-			client.print("Content-Type: application/json\r\n");
-			client.write("\r\n");
+			http_header(client, 200, "application/json");
 
 			client.write("{\"message\":\"New AP added\"}");
 
@@ -198,10 +199,7 @@ void request_add_app(WiFiClient & client, const String & json_string)
 		}
 	}
 
-	client.write("HTTP/1.0 500\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: application/json\r\n");
-	client.write("\r\n");
+	http_header(client, 500, "application/json");
 
 	client.write("{\"message\":\"New AP not added due to some error\"}");
 }
@@ -215,10 +213,7 @@ void request_del_app(WiFiClient & client, const String & json_string)
 
 	if (delete_ssid_from_ap_list(aps, aps.at(json_buffer["id"].as<int>()).first)) {
 		if (save_configured_ap_list(aps)) {
-			client.write("HTTP/1.0 200\r\n");
-			client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-			client.print("Content-Type: application/json\r\n");
-			client.write("\r\n");
+			http_header(client, 200, "application/json");
 
 			client.write("{\"message\":\"AP deleted\"}");
 
@@ -226,10 +221,7 @@ void request_del_app(WiFiClient & client, const String & json_string)
 		}
 	}
 
-	client.write("HTTP/1.0 500\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: application/json\r\n");
-	client.write("\r\n");
+	http_header(client, 500, "application/json");
 
 	client.write("{\"message\":\"New AP not deleted due to some error\"}");
 }
@@ -258,15 +250,13 @@ void request_some_file(WiFiClient & client, const String & url)
 	if (!dataFile) {
 		Serial.println(F("404"));
 
-		client.write("HTTP/1.0 404 NOT FOUND\r\n\r\n");
+		http_header(client, 404, "text/html");
+		client.write("???");
 
 		return;
 	}
 
-	client.write("HTTP/1.0 200\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: " + mime_type + "\r\n");
-	client.write("\r\n");
+	http_header(client, 200, mime_type);
 
 	size_t size = dataFile.size();
 
@@ -278,10 +268,8 @@ void request_some_file(WiFiClient & client, const String & url)
 
 void request_stop(WiFiClient & client)
 {
-	client.write("HTTP/1.0 200\r\n");
-	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
-	client.print("Content-Type: application/json\r\n");
-	client.write("\r\n");
+	http_header(client, 200, "application/json");
+
 	client.write("{ \"message\":\"Activating new configuration...\" }");
 }
 
