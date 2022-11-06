@@ -16,9 +16,11 @@ bool progress_indicator(const int nr, const int mx, const std::string & which)
 void setup() {
 	Serial.begin(115200);
 
+	Serial.setDebugOutput(true);
+
 	set_hostname("test123");
 
-//	enable_wifi_debug();
+	enable_wifi_debug();
 
 	start_wifi("test123");  // enable wifi with AP (empty string for no wifi)
 
