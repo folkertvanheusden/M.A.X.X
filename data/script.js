@@ -75,6 +75,13 @@ const mapper2 = l => ({
     rssi: l.rssi + ' dbm',
 })
 
+function myadd(a, p) {
+	const result = Api.add(a, p)
+
+	setTimeout(async () => renderSaved(await Api.configured()), 500)
+
+	return result
+}
 
 const renderScanned = scanned => table($('.available'), scanned.map(mapper2), {
     // TODO see https://github.com/MartinVerges/womolin-waterlevel/blob/main/ui/src/routes/wifi.svelte
@@ -84,7 +91,7 @@ const renderScanned = scanned => table($('.available'), scanned.map(mapper2), {
         const apName = row.ssid
         const apPass = prompt(`Password for ${apName}`)
 
-        const result = await Api.add(apName, apPass)
+        const result = await myadd(apName, apPass)
         snack(result.message, 'text')
 
         renderScanned(await Api.scan())
