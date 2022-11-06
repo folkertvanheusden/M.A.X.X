@@ -18,8 +18,11 @@ std::vector<std::pair<std::string, std::string> > load_configured_ap_list()
 
 	size_t size = dataFile.size();
 
-	if (size > 1024)  // this should not happen
+	if (size > 1024) {  // this should not happen
+		dataFile.close();
+
 		return { };
+	}
 
 	char buffer[1024];
 

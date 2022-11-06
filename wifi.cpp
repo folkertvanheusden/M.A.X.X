@@ -14,11 +14,13 @@ bool set_hostname(const std::string & hostname)
 {
 	WiFi.hostname(hostname.c_str());
 
-	return false;
+	return true;
 }
 
 void start_wifi(const std::optional<std::string> & listen_ssid)
 {
+	WiFi.persistent(false);
+
 	if (listen_ssid.has_value()) {
 		WiFi.mode(WIFI_AP_STA);
 
