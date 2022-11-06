@@ -27,8 +27,6 @@ void start_wifi(const std::optional<std::string> & listen_ssid)
 	else {
 		WiFi.mode(WIFI_STA);
 	}
-
-	WiFi.scanDelete();
 }
 
 void enable_wifi_debug()
@@ -39,6 +37,8 @@ void enable_wifi_debug()
 std::map<std::string, std::tuple<int, uint8_t, int> > scan_access_points()
 {
 	std::map<std::string, std::tuple<int, uint8_t, int> > out;
+
+	WiFi.scanDelete();
 
 	int n_networks = WiFi.scanNetworks();
 
