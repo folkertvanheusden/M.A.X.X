@@ -110,17 +110,31 @@ void request_wifi_status(WiFiClient & client)
 	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
 	client.print("Content-Type: application/json\r\n");
 	client.write("\r\n");
-	client.write("{}");
+
+	DynamicJsonDocument json_doc(1024);
+
+	json_doc["hostname"]      = WiFi.getHostname();
+
+	uint32_t free = 0;
+	uint16_t max  = 0;
+	uint8_t  frag = 0;
+	ESP.getHeapStats(&free, &max, &frag);
+
+	json_doc["getHeapSize"]   = max;
+	json_doc["freeHeap"]      = free;
+	json_doc["fragmentation"] = frag;
+
+	serializeJson(json_doc, client);
 }
 
 void request_wifi_scan(WiFiClient & client)
 {
 	auto aps_visible = scan_access_points();
 
-	DynamicJsonDocument jsonDoc(1024);
+	DynamicJsonDocument json_doc(1024);
 
 	for(auto & ap : aps_visible) {
-		JsonObject entry = jsonDoc.createNestedObject();
+		JsonObject entry = json_doc.createNestedObject();
 
 		entry["ssid"]           = ap.first;
 		entry["rssi"]           = std::get<0>(ap.second);
@@ -133,17 +147,17 @@ void request_wifi_scan(WiFiClient & client)
 	client.print("Content-Type: application/json\r\n");
 	client.write("\r\n");
 
-	serializeJson(jsonDoc, client);
+	serializeJson(json_doc, client);
 }
 
 void request_configured_ap_list(WiFiClient & client)
 {
 	auto aps_configured = load_configured_ap_list();
 
-	DynamicJsonDocument jsonDoc(1024);
+	DynamicJsonDocument json_doc(1024);
 
 	for(size_t i=0; i<aps_configured.size(); i++) {
-		JsonObject entry = jsonDoc.createNestedObject();
+		JsonObject entry = json_doc.createNestedObject();
 
 		entry["id"]     = i;
 		entry["apName"] = aps_configured.at(i).first;
@@ -158,7 +172,7 @@ void request_configured_ap_list(WiFiClient & client)
 	if (aps_configured.size() == 0)
 		client.write("[]");
 	else
-		serializeJson(jsonDoc, client);
+		serializeJson(json_doc, client);
 }
 
 void request_add_app(WiFiClient & client, const String & json_string)
