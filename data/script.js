@@ -67,7 +67,7 @@ renderSaved(configured)
 // available networks
 
 const mapper2 = l => ({
-    strength: meter(Math.abs(parseInt(l.rssi))),
+    strength: meter(127 + parseInt(l.rssi)),
     ssid: l.ssid,
     encryption: Api.AuthMode[l.encryptionType],
     encrypted: l.encryptionType > 0 ? '🔒\ufe0e' : '',
