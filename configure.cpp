@@ -104,6 +104,15 @@ bool add_ssid_to_ap_list(std::vector<std::pair<std::string, std::string> > & lis
 	return true;
 }
 
+void request_wifi_status(WiFiClient & client)
+{
+	client.write("HTTP/1.0 200\r\n");
+	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+	client.print("Content-Type: application/json\r\n");
+	client.write("\r\n");
+	client.write("{}");
+}
+
 void request_wifi_scan(WiFiClient & client)
 {
 	auto aps_visible = scan_access_points();
@@ -117,8 +126,6 @@ void request_wifi_scan(WiFiClient & client)
 		entry["rssi"]           = std::get<0>(ap.second);
 		entry["encryptionType"] = std::get<1>(ap.second);
 		entry["channel"]        = std::get<2>(ap.second);
-
-		yield();
 	}
 
 	client.write("HTTP/1.0 200\r\n");
@@ -131,7 +138,83 @@ void request_wifi_scan(WiFiClient & client)
 
 void request_configured_ap_list(WiFiClient & client)
 {
-	// TODO
+	auto aps_configured = load_configured_ap_list();
+
+	DynamicJsonDocument jsonDoc(1024);
+
+	for(size_t i=0; i<aps_configured.size(); i++) {
+		JsonObject entry = jsonDoc.createNestedObject();
+
+		entry["id"]     = i;
+		entry["apName"] = aps_configured.at(i).first;
+		entry["apPass"] = aps_configured.at(i).second.empty() ? false : true;
+	}
+
+	client.write("HTTP/1.0 200\r\n");
+	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+	client.print("Content-Type: application/json\r\n");
+	client.write("\r\n");
+
+	if (aps_configured.size() == 0)
+		client.write("[]");
+	else
+		serializeJson(jsonDoc, client);
+}
+
+void request_add_app(WiFiClient & client, const String & json_string)
+{
+	DynamicJsonDocument json_buffer(256);
+	deserializeJson(json_buffer, json_string.c_str());
+
+	auto aps = load_configured_ap_list();
+
+	if (add_ssid_to_ap_list(aps, json_buffer["apName"].as<std::string>(), json_buffer["apPass"].as<std::string>())) {
+		if (save_configured_ap_list(aps)) {
+			client.write("HTTP/1.0 200\r\n");
+			client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+			client.print("Content-Type: application/json\r\n");
+			client.write("\r\n");
+
+			client.write("{\"message\":\"New AP added\"}");
+
+			return;
+		}
+	}
+
+	client.write("HTTP/1.0 500\r\n");
+	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+	client.print("Content-Type: application/json\r\n");
+	client.write("\r\n");
+
+	client.write("{\"message\":\"New AP not added due to some error\"}");
+}
+
+void request_del_app(WiFiClient & client, const String & json_string)
+{
+	DynamicJsonDocument json_buffer(256);
+	deserializeJson(json_buffer, json_string.c_str());
+
+	auto aps = load_configured_ap_list();
+
+	if (delete_ssid_from_ap_list(aps, aps.at(json_buffer["id"].as<int>()).first)) {
+		if (save_configured_ap_list(aps)) {
+			client.write("HTTP/1.0 200\r\n");
+			client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+			client.print("Content-Type: application/json\r\n");
+			client.write("\r\n");
+
+			client.write("{\"message\":\"AP deleted\"}");
+
+			return;
+		}
+	}
+
+	client.write("HTTP/1.0 500\r\n");
+	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+	client.print("Content-Type: application/json\r\n");
+	client.write("\r\n");
+
+	client.write("{\"message\":\"New AP not deleted due to some error\"}");
 }
 
 void request_some_file(WiFiClient & client, const String & url)
@@ -195,10 +278,6 @@ bool configure_aps()
 			continue;
 		}
 
-		Serial.println("connected");
-
-		Serial.println(millis());
-
 		// ignore request headers & retrieve rest data
 		String json_string;
 		String request;
@@ -207,15 +286,19 @@ bool configure_aps()
 		while (client.available() || header) {
 			String line = client.readStringUntil('\r');
 
-			if (header && request.isEmpty())
+			if (header && request.isEmpty()) {
 				request = line;
+
+				client.setTimeout(100);
+			}
 			else if (line.length() == 1 && line[0] == '\n' && header)
 				header = false;
-			else if (!header)
+			else if (!header) {
 				json_string += line;
-		}
+			}
 
-		Serial.println(millis());
+			yield();
+		}
 
 		String cmd;
 		String url;
@@ -234,15 +317,20 @@ bool configure_aps()
 
 		Serial.println(url);
 
-		if (url == "/api/wifi/scan") {
+		if (url == "/api/wifi/status") {
+			request_wifi_status(client);
+		}
+		else if (url == "/api/wifi/scan") {
 			request_wifi_scan(client);
 		}
 		else if (url == "/api/wifi/configlist") {
 			request_configured_ap_list(client);
 		}
 		else if (url == "/api/wifi/add" && cmd == "POST") {
+			request_add_app(client, json_string);
 		}
-		else if (url == "/api/wifi/apName" && cmd == "DELETE") {
+		else if (url == "/api/wifi/id" && cmd == "DELETE") {
+			request_del_app(client, json_string);
 		}
 		else if (url == "/api/wifi/softAp/stop" && cmd == "POST") {
 			rc = true;
@@ -256,8 +344,6 @@ bool configure_aps()
 		else {
 			request_some_file(client, url);
 		}
-
-		client.flush();
 
 		client.stop();
 	}
