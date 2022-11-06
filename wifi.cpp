@@ -17,9 +17,16 @@ bool set_hostname(const std::string & hostname)
 	return false;
 }
 
-void start_wifi()
+void start_wifi(const std::optional<std::string> & listen_ssid)
 {
-	 WiFi.mode(WIFI_AP_STA);
+	if (listen_ssid.has_value()) {
+		WiFi.mode(WIFI_AP_STA);
+
+		WiFi.softAP(listen_ssid.value().c_str());
+	}
+	else {
+		WiFi.mode(WIFI_STA);
+	}
 }
 
 void enable_wifi_debug()
@@ -38,7 +45,7 @@ std::map<std::string, int> scan_access_points()
 		out.insert({ WiFi.SSID(i).c_str(), WiFi.RSSI(i) });
 
 		if (debug)
-			printf("%s: %d\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+			printf("%s: %d\r\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
 	}
 
 	return out;
@@ -55,6 +62,8 @@ bool connect_to_access_point(const std::string ssid, const std::string password)
 connect_status_t check_wifi_connection_status()
 {
 	auto status = WiFi.status();
+
+	printf("wifi status: %d\r\n", status);
 
 	if (status == WL_CONNECTED)
 		return CS_CONNECTED;
@@ -83,7 +92,7 @@ std::optional<std::string> select_best_access_point(const std::map<std::string, 
 	return best_ssid;
 }
 
-bool try_connect(const std::vector<std::pair<std::string, std::string> > & targets, const std::map<std::string, int> & scan_results, const int timeout, std::function<bool(int, int, std::string)> & progress_indicator)
+bool try_connect(const std::vector<std::pair<std::string, std::string> > & targets, const std::map<std::string, int> & scan_results, const int timeout, std::function<bool(const int, const int, const std::string &)> progress_indicator)
 {
 	// scan through selected & scan-results and order by signal strength
 	std::vector<std::tuple<std::string, std::string, int> > use;
@@ -97,39 +106,58 @@ bool try_connect(const std::vector<std::pair<std::string, std::string> > & targe
 
 	std::sort(use.begin(), use.end(), [](auto & a, auto & b) { return std::get<2>(b) < std::get<2>(a); });
 
-	int  nr               = 0;
+	size_t nr               = 0;
 
-	bool connecting_state = 0;
+	int    waiting_nr       = 0;
 
-        bool ok               = false;
+	bool   connecting_state = 0;
 
-	while(nr < timeout) {
+        bool   ok               = false;
+
+	while(nr < targets.size()) {
 		bool sleep = false;
 
 		if (connecting_state == false) {
 			if (debug)
-				printf("Connecting to %s\n", std::get<0>(use.at(nr)).c_str());
+				printf("Connecting to %s\r\n", std::get<0>(use.at(nr)).c_str());
 
-			if (connect_to_access_point(std::get<0>(use.at(nr)), std::get<1>(use.at(nr))))
+			if (connect_to_access_point(std::get<0>(use.at(nr)), std::get<1>(use.at(nr)))) {
 				connecting_state = true;
-			else
+
+				waiting_nr       = 0;
+			}
+			else {
 				nr++;
+			}
 		}
 		else {
 			auto status = check_wifi_connection_status();
 
 			if (status == CS_CONNECTED) {
 				if (debug)
-					printf("Connected\n");
+					printf("Connected\r\n");
+
+				progress_indicator(100, 100, std::get<0>(use.at(nr)));
 
 				ok = true;
 
 				break;
 			}
 
+			if (waiting_nr >= timeout) {
+				if (debug)
+					printf("timeout\r\n");
+
+				nr++;
+
+				connecting_state = false;
+
+				continue;
+			}
+
 			if (status == CS_FAILURE) {
 				if (debug)
-					printf("Connection failed");
+					printf("Connection failed\r\n");
 
 				nr++;
 
@@ -142,12 +170,17 @@ bool try_connect(const std::vector<std::pair<std::string, std::string> > & targe
 			}
 		}
 
-		if (progress_indicator(nr, timeout, std::get<0>(use.at(nr))) == false)
+		if (nr < targets.size() && progress_indicator(nr * timeout + waiting_nr, targets.size() * timeout, std::get<0>(use.at(nr))) == false)
 			break;
 
 		if (sleep)
 			delay(100);
+
+		waiting_nr++;
 	}
+	
+	if (!ok)
+		progress_indicator(0, 100, "");
 
 	return ok;
 }

@@ -1,0 +1,18 @@
+:root {
+    --brand: #BDE4A7;
+    --secondary: #7A9CC6;
+}
+
+.message {
+    background: white;
+    bottom: 1rem;
+    box-shadow: 0 0 8px lightgray;
+    left: 1rem;
+    padding: 1rem;
+    position: fixed
+    /* // TODO line-height: 0px -> 30px in / fade out */
+}
+
+.message:empty {
+    display: none
+}
