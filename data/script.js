@@ -60,7 +60,7 @@ const renderSaved = configured => table($('.saved'), configured.map(mapper1), {
         renderSaved(await Api.configured())
     }
 }, `Last update ${lastUpdate()}`)
-setInterval(async () => renderSaved(await Api.configured()), 5 * 1000)
+setTimeout(async () => renderSaved(await Api.configured()), 1 * 1500)
 renderSaved(configured)
 
 
