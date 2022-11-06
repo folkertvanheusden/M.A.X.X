@@ -5,6 +5,11 @@ See test.ino for a usage example.
 Please note that this is not entirely finished albeit usuable.
 Pull requests are welcome! (or patches by e-mail)
 
+Screenshot:
+
+![(screenshot)](images/M.A.X.X-screenshot001.png)
+
+
 --- Folkert van Heusden <mail@vanheusden.com>
 
 
