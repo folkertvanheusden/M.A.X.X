@@ -20,7 +20,7 @@ void setup() {
 
 //	enable_wifi_debug();
 
-	start_wifi("test123");
+	start_wifi("test123");  // enable wifi with AP (empty string for no wifi)
 
 	if (!LittleFS.begin())
 		printf("LittleFS.begin() failed\r\n");
@@ -35,6 +35,8 @@ void setup() {
 			printf("configure_aps\r\n");
 
 			configure_aps();
+
+			ESP.reset();
 		}
 
 		// see what we can see
@@ -48,6 +50,8 @@ void setup() {
 		// could not connect, (re-)configure
 		printf("configure_aps\r\n");
 		configure_aps();
+
+		ESP.reset();
 	}
 }
 

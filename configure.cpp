@@ -259,6 +259,15 @@ void request_some_file(WiFiClient & client, const String & url)
 	dataFile.close();
 }
 
+void request_stop(WiFiClient & client)
+{
+	client.write("HTTP/1.0 200\r\n");
+	client.write("Server: M.A.X.X - by vanheusden.com\r\n");
+	client.print("Content-Type: application/json\r\n");
+	client.write("\r\n");
+	client.write("{ \"message\":\"Activating new configuration...\" }");
+}
+
 bool configure_aps()
 {
 	bool       rc     = false;
@@ -332,10 +341,16 @@ bool configure_aps()
 		else if (url == "/api/wifi/id" && cmd == "DELETE") {
 			request_del_app(client, json_string);
 		}
-		else if (url == "/api/wifi/softAp/stop" && cmd == "POST") {
-			rc = true;
+		else if (url == "/api/wifi/softAp/stop") {
+			printf("Request to switch to run mode\r\n");
+
+			request_stop(client);
 
 			client.stop();
+
+			delay(1000);
+
+			rc = true;
 
 			break;
 		}

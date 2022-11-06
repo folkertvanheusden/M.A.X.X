@@ -29,9 +29,7 @@ const deleteById = async id => request(`${endpoint}/id`, Method.Delete, { id })
 const deleteByApName = async apName => request(`${endpoint}/apName`, Method.Delete, { apName })
 
 export const actions = {
-    startAp: async () => request(`${endpoint}/softAp/start`, Method.Post),
-    stopAp: async () => request(`${endpoint}/softAp/stop`, Method.Post),
-    disconnect: async () => request(`${endpoint}/client/stop`, Method.Post),
+    start: async () => request(`${endpoint}/softAp/stop`, Method.Post),
 }
 
 export { configured, scan, status, add, deleteById, deleteByApName }

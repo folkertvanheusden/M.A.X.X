@@ -27,6 +27,8 @@ void start_wifi(const std::optional<std::string> & listen_ssid)
 	else {
 		WiFi.mode(WIFI_STA);
 	}
+
+	WiFi.scanDelete();
 }
 
 void enable_wifi_debug()
