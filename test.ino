@@ -26,20 +26,27 @@ void setup() {
 		printf("LittleFS.begin() failed\r\n");
 
 	for(;;) {
+		printf("load_configured_ap_list\r\n");
 		// anything configured?
 		auto targets = load_configured_ap_list();
 
 		// no, start softap
-		if (targets.size() == 0)
+		if (targets.size() == 0) {
+			printf("configure_aps\r\n");
+
 			configure_aps();
+		}
 
 		// see what we can see
+		printf("scan\r\n");
 		auto available_access_points = scan_access_points();
 		// try to connect
+		printf("connect\r\n");
 		if (try_connect(targets, available_access_points, 300, progress_indicator))
 			break;
 
 		// could not connect, (re-)configure
+		printf("configure_aps\r\n");
 		configure_aps();
 	}
 }
