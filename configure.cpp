@@ -268,13 +268,6 @@ void configure_wifi::request_some_file(WiFiClient & client, const String & url)
 
 	http_header(client, 200, mime_type);
 
-#if 0
-	size_t size = dataFile.size();
-
-	for(size_t i=0; i<size; i++)
-		client.write(dataFile.read());
-#endif
-
 	client.write(dataFile);
 
 	dataFile.close();
