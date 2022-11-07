@@ -27,16 +27,16 @@ void setup() {
 	if (!LittleFS.begin())
 		printf("LittleFS.begin() failed\r\n");
 
+	configure_wifi cw;
+
 	for(;;) {
 		printf("load_configured_ap_list\r\n");
 		// anything configured?
-		auto targets = load_configured_ap_list();
-
-		// no, start softap
-		if (targets.size() == 0) {
+		if (cw.is_configured() == false) {
+			// no, start softap
 			printf("configure_aps\r\n");
 
-			configure_aps();
+			cw.configure_aps();
 
 			ESP.reset();
 		}
@@ -46,12 +46,12 @@ void setup() {
 		auto available_access_points = scan_access_points();
 		// try to connect
 		printf("connect\r\n");
-		if (try_connect(targets, available_access_points, 300, progress_indicator))
+		if (try_connect(cw.get_targets(), available_access_points, 300, progress_indicator))
 			break;
 
 		// could not connect, (re-)configure
 		printf("configure_aps\r\n");
-		configure_aps();
+		cw.configure_aps();
 
 		ESP.reset();
 	}

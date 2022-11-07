@@ -3,25 +3,44 @@
 #include <vector>
 
 #include <ArduinoJson.h>
-#include <ESP8266WiFi.h>
 #include <LittleFS.h>
 
+#include "configure.h"
 #include "wifi.h"
 
 
-std::vector<std::pair<std::string, std::string> > load_configured_ap_list()
+configure_wifi::configure_wifi()
+{
+	load_configured_ap_list();
+}
+
+configure_wifi::~configure_wifi()
+{
+}
+
+bool configure_wifi::is_configured() const
+{
+	return configured_ap_list.empty() == false;
+}
+
+std::vector<std::pair<std::string, std::string> > configure_wifi::get_targets() const
+{
+	return configured_ap_list;
+}
+
+bool configure_wifi::load_configured_ap_list()
 {
 	File dataFile = LittleFS.open("wifi-aps.json", "r");
 
 	if (!dataFile)
-		return { };
+		return false;
 
 	size_t size = dataFile.size();
 
 	if (size > 1024) {  // this should not happen
 		dataFile.close();
 
-		return { };
+		return false;
 	}
 
 	char buffer[1024];
@@ -38,21 +57,21 @@ std::vector<std::pair<std::string, std::string> > load_configured_ap_list()
 	if (error)  // this should not happen
 		return { };
 
-	std::vector<std::pair<std::string, std::string> > out;
+	configured_ap_list.clear();
 
 	JsonArray array = json.as<JsonArray>();
 
 	for(auto element : array)
-		out.push_back({ element["ssid"], element["password"] });
+		configured_ap_list.push_back({ element["ssid"], element["password"] });
 
-	return out;
+	return true;
 }
 
-bool save_configured_ap_list(const std::vector<std::pair<std::string, std::string> > & list)
+bool configure_wifi::save_configured_ap_list()
 {
 	DynamicJsonDocument json(1024);
 
-	for(auto & element : list) {
+	for(auto & element : configured_ap_list) {
 		DynamicJsonDocument ar_elem(128);
 
 		ar_elem["ssid"]     = element.first;
@@ -61,28 +80,25 @@ bool save_configured_ap_list(const std::vector<std::pair<std::string, std::strin
 		json.add(ar_elem);
 	}
 
-	String output;
-	serializeJson(json, output);
-
 	File dataFile = LittleFS.open("wifi-aps.json", "w");
 
 	if (!dataFile)
 		return false;
 
-	dataFile.write(output.c_str(), output.length());
+	serializeJson(json, dataFile);
 
 	dataFile.close();
 
 	return true;
 }
 
-bool delete_ssid_from_ap_list(std::vector<std::pair<std::string, std::string> > & list, const std::string & ssid)
+bool configure_wifi::delete_ssid_from_ap_list(const std::string & ssid)
 {
-	const size_t size = list.size();
+	const size_t size = configured_ap_list.size();
 
 	for(size_t i = 0; i<size; i++) {
-		if (list.at(i).first == ssid) {
-			list.erase(list.begin() + i);
+		if (configured_ap_list.at(i).first == ssid) {
+			configured_ap_list.erase(configured_ap_list.begin() + i);
 
 			return true;
 		}
@@ -91,23 +107,23 @@ bool delete_ssid_from_ap_list(std::vector<std::pair<std::string, std::string> > 
 	return false;
 }
 
-bool add_ssid_to_ap_list(std::vector<std::pair<std::string, std::string> > & list, const std::string & ssid, const std::string & password)
+bool configure_wifi::add_ssid_to_ap_list(const std::string & ssid, const std::string & password)
 {
-	const size_t size = list.size();
+	const size_t size = configured_ap_list.size();
 
 	for(size_t i = 0; i<size; i++) {
-		if (list.at(i).first == ssid)
+		if (configured_ap_list.at(i).first == ssid)
 			return false;
 	}
 
-	list.push_back({ ssid, password });
+	configured_ap_list.push_back({ ssid, password });
 
-	std::sort(list.begin(), list.end(), [](auto & a, auto & b) { return strcmp(a.first.c_str(), b.first.c_str()) > 0; });
+	std::sort(configured_ap_list.begin(), configured_ap_list.end(), [](auto & a, auto & b) { return strcmp(a.first.c_str(), b.first.c_str()) > 0; });
 
 	return true;
 }
 
-void http_header(WiFiClient & client, const int code, const String & mime_type)
+void configure_wifi::http_header(WiFiClient & client, const int code, const String & mime_type)
 {
 	client.print("HTTP/1.0 ");
 	client.print(code);
@@ -120,7 +136,7 @@ void http_header(WiFiClient & client, const int code, const String & mime_type)
 	client.print("\r\n");
 }
 
-void request_wifi_status(WiFiClient & client)
+void configure_wifi::request_wifi_status(WiFiClient & client)
 {
 	http_header(client, 200, "application/json");
 
@@ -140,7 +156,7 @@ void request_wifi_status(WiFiClient & client)
 	serializeJson(json_doc, client);
 }
 
-void request_wifi_scan(WiFiClient & client)
+void configure_wifi::request_wifi_scan(WiFiClient & client)
 {
 	auto aps_visible = scan_access_points();
 
@@ -160,37 +176,33 @@ void request_wifi_scan(WiFiClient & client)
 	serializeJson(json_doc, client);
 }
 
-void request_configured_ap_list(WiFiClient & client)
+void configure_wifi::request_configured_ap_list(WiFiClient & client)
 {
-	auto aps_configured = load_configured_ap_list();
-
 	DynamicJsonDocument json_doc(1024);
 
-	for(size_t i=0; i<aps_configured.size(); i++) {
+	for(size_t i=0; i<configured_ap_list.size(); i++) {
 		JsonObject entry = json_doc.createNestedObject();
 
 		entry["id"]     = i;
-		entry["apName"] = aps_configured.at(i).first;
-		entry["apPass"] = aps_configured.at(i).second.empty() ? false : true;
+		entry["apName"] = configured_ap_list.at(i).first;
+		entry["apPass"] = configured_ap_list.at(i).second.empty() ? false : true;
 	}
 
 	http_header(client, 200, "application/json");
 
-	if (aps_configured.size() == 0)
+	if (configured_ap_list.empty() == true)
 		client.write("[]");
 	else
 		serializeJson(json_doc, client);
 }
 
-void request_add_app(WiFiClient & client, const String & json_string)
+void configure_wifi::request_add_app(WiFiClient & client, const String & json_string)
 {
 	DynamicJsonDocument json_buffer(256);
 	deserializeJson(json_buffer, json_string.c_str());
 
-	auto aps = load_configured_ap_list();
-
-	if (add_ssid_to_ap_list(aps, json_buffer["apName"].as<std::string>(), json_buffer["apPass"].as<std::string>())) {
-		if (save_configured_ap_list(aps)) {
+	if (add_ssid_to_ap_list(json_buffer["apName"].as<std::string>(), json_buffer["apPass"].as<std::string>())) {
+		if (save_configured_ap_list()) {
 			http_header(client, 200, "application/json");
 
 			client.write("{\"message\":\"New AP added\"}");
@@ -204,15 +216,13 @@ void request_add_app(WiFiClient & client, const String & json_string)
 	client.write("{\"message\":\"New AP not added due to some error\"}");
 }
 
-void request_del_app(WiFiClient & client, const String & json_string)
+void configure_wifi::request_del_app(WiFiClient & client, const String & json_string)
 {
 	DynamicJsonDocument json_buffer(256);
 	deserializeJson(json_buffer, json_string.c_str());
 
-	auto aps = load_configured_ap_list();
-
-	if (delete_ssid_from_ap_list(aps, aps.at(json_buffer["id"].as<int>()).first)) {
-		if (save_configured_ap_list(aps)) {
+	if (delete_ssid_from_ap_list(configured_ap_list.at(json_buffer["id"].as<int>()).first)) {
+		if (save_configured_ap_list()) {
 			http_header(client, 200, "application/json");
 
 			client.write("{\"message\":\"AP deleted\"}");
@@ -226,7 +236,7 @@ void request_del_app(WiFiClient & client, const String & json_string)
 	client.write("{\"message\":\"New AP not deleted due to some error\"}");
 }
 
-void request_some_file(WiFiClient & client, const String & url)
+void configure_wifi::request_some_file(WiFiClient & client, const String & url)
 {
 	Serial.print(F("Serve static file: "));
 	Serial.println(url);
@@ -258,30 +268,32 @@ void request_some_file(WiFiClient & client, const String & url)
 
 	http_header(client, 200, mime_type);
 
+#if 0
 	size_t size = dataFile.size();
 
 	for(size_t i=0; i<size; i++)
 		client.write(dataFile.read());
+#endif
+
+	client.write(dataFile);
 
 	dataFile.close();
 }
 
-void request_stop(WiFiClient & client)
+void configure_wifi::request_stop(WiFiClient & client)
 {
 	http_header(client, 200, "application/json");
 
 	client.write("{ \"message\":\"Activating new configuration...\" }");
 }
 
-bool configure_aps()
+bool configure_wifi::configure_aps()
 {
 	bool       rc     = false;
 
 	WiFiServer server(80);
 
 	server.begin();
-
-	auto aps = load_configured_ap_list();
 
 	for(;;) {
 		WiFiClient client = server.available();

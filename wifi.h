@@ -1,6 +1,10 @@
+#pragma once
+
 #include <map>
 #include <optional>
 #include <string>
+
+#include <ESP8266WiFi.h>
 
 
 typedef enum {
