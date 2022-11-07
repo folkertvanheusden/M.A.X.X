@@ -3,8 +3,6 @@
 #include <vector>
 #include <utility>
 
-#include <ESP8266WiFi.h>
-
 #include "wifi.h"
 
 

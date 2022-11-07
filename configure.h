@@ -5,6 +5,8 @@
 #include "wifi.h"
 
 
+#define CFG_FILE "/wifi-aps.json"
+
 class configure_wifi
 {
 private:

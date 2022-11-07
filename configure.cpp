@@ -30,7 +30,7 @@ std::vector<std::pair<std::string, std::string> > configure_wifi::get_targets() 
 
 bool configure_wifi::load_configured_ap_list()
 {
-	File dataFile = LittleFS.open("wifi-aps.json", "r");
+	File dataFile = LittleFS.open(CFG_FILE, "r");
 
 	if (!dataFile)
 		return false;
@@ -78,7 +78,7 @@ bool configure_wifi::save_configured_ap_list()
 		ar_elem["password"] = element.second;
 	}
 
-	File dataFile = LittleFS.open("wifi-aps.json", "w");
+	File dataFile = LittleFS.open(CFG_FILE, "w");
 
 	if (!dataFile)
 		return false;
@@ -142,14 +142,19 @@ void configure_wifi::request_wifi_status(WiFiClient & client)
 
 	json_doc["hostname"]      = WiFi.getHostname();
 
+#if defined(ESP32)
+	json_doc["free-heap"]     = ESP.getMinFreeHeap();
+	json_doc["heap-size"]     = ESP.getHeapSize();
+#else
 	uint32_t free = 0;
 	uint16_t max  = 0;
 	uint8_t  frag = 0;
 	ESP.getHeapStats(&free, &max, &frag);
 
-	json_doc["getHeapSize"]   = max;
-	json_doc["freeHeap"]      = free;
+	json_doc["heap-size"]     = max;
+	json_doc["free-heap"]     = free;
 	json_doc["fragmentation"] = frag;
+#endif
 
 	serializeJson(json_doc, client);
 }
@@ -282,9 +287,17 @@ bool configure_wifi::configure_aps()
 {
 	bool       rc     = false;
 
+#if defined(ESP32)
+	auto       prev_sleep_mode = WiFi.getSleep();
+
+	WiFi.setSleep(false);
+#endif
+
 	WiFiServer server(80);
 
 	server.begin();
+
+	server.setNoDelay(true);
 
 	for(;;) {
 		WiFiClient client = server.available();
@@ -300,13 +313,17 @@ bool configure_wifi::configure_aps()
 		String request;
 		bool   header      = true;
 
-		while (client.available() || header) {
+		while (client.available() > 0 || header) {
 			String line = client.readStringUntil('\r');
 
 			if (header && request.isEmpty()) {
 				request = line;
 
-				client.setTimeout(100);
+#if defined(ESP32)
+				client.setTimeout(1);  // in seconds...
+#else
+				client.setTimeout(100);  // in milliseconds
+#endif
 			}
 			else if (line.length() == 1 && line[0] == '\n' && header)
 				header = false;
@@ -365,13 +382,20 @@ bool configure_wifi::configure_aps()
 			break;
 		}
 		else if (url == "/" && cmd == "GET")
-			request_some_file(client, "gui.html");
+			request_some_file(client, "/gui.html");
 		else {
+			if (url[0] != '/')
+				url = "/" + url;
+
 			request_some_file(client, url);
 		}
 
 		client.stop();
 	}
+
+#if defined(ESP32)
+	WiFi.setSleep(prev_sleep_mode);
+#endif
 
 	return rc;
 }
