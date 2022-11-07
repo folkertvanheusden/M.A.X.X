@@ -332,6 +332,8 @@ bool configure_wifi::configure_aps()
 				url = url.substring(0, space);
 		}
 
+		Serial.print(millis());
+		Serial.print(' ');
 		Serial.println(url);
 
 		if (url == "/api/wifi/status") {
