@@ -9,6 +9,8 @@ Screenshot:
 
 ![(screenshot)](images/M.A.X.X-screenshot001.png)
 
+The only external dependency is "ArduinoJson" (by bblanchon - it is automatically installed by the platformio-script).
+
 
 --- Folkert van Heusden <mail@vanheusden.com>
 
