@@ -69,15 +69,13 @@ bool configure_wifi::load_configured_ap_list()
 
 bool configure_wifi::save_configured_ap_list()
 {
-	DynamicJsonDocument json(1024);
+	StaticJsonDocument<1024> json_doc;
 
 	for(auto & element : configured_ap_list) {
-		DynamicJsonDocument ar_elem(128);
+		JsonObject ar_elem  = json_doc.createNestedObject();
 
 		ar_elem["ssid"]     = element.first;
 		ar_elem["password"] = element.second;
-
-		json.add(ar_elem);
 	}
 
 	File dataFile = LittleFS.open("wifi-aps.json", "w");
@@ -85,7 +83,7 @@ bool configure_wifi::save_configured_ap_list()
 	if (!dataFile)
 		return false;
 
-	serializeJson(json, dataFile);
+	serializeJson(json_doc, dataFile);
 
 	dataFile.close();
 
@@ -140,7 +138,7 @@ void configure_wifi::request_wifi_status(WiFiClient & client)
 {
 	http_header(client, 200, "application/json");
 
-	DynamicJsonDocument json_doc(1024);
+	StaticJsonDocument<1024> json_doc;
 
 	json_doc["hostname"]      = WiFi.getHostname();
 
@@ -160,7 +158,7 @@ void configure_wifi::request_wifi_scan(WiFiClient & client)
 {
 	auto aps_visible = scan_access_points();
 
-	DynamicJsonDocument json_doc(1024);
+	StaticJsonDocument<1024> json_doc;
 
 	for(auto & ap : aps_visible) {
 		JsonObject entry = json_doc.createNestedObject();
@@ -178,7 +176,7 @@ void configure_wifi::request_wifi_scan(WiFiClient & client)
 
 void configure_wifi::request_configured_ap_list(WiFiClient & client)
 {
-	DynamicJsonDocument json_doc(1024);
+	StaticJsonDocument<1024> json_doc;
 
 	for(size_t i=0; i<configured_ap_list.size(); i++) {
 		JsonObject entry = json_doc.createNestedObject();
@@ -198,7 +196,7 @@ void configure_wifi::request_configured_ap_list(WiFiClient & client)
 
 void configure_wifi::request_add_app(WiFiClient & client, const String & json_string)
 {
-	DynamicJsonDocument json_buffer(256);
+	StaticJsonDocument<256> json_buffer;
 	deserializeJson(json_buffer, json_string.c_str());
 
 	if (add_ssid_to_ap_list(json_buffer["apName"].as<std::string>(), json_buffer["apPass"].as<std::string>())) {
@@ -218,7 +216,7 @@ void configure_wifi::request_add_app(WiFiClient & client, const String & json_st
 
 void configure_wifi::request_del_app(WiFiClient & client, const String & json_string)
 {
-	DynamicJsonDocument json_buffer(256);
+	StaticJsonDocument<256> json_buffer;
 	deserializeJson(json_buffer, json_string.c_str());
 
 	if (delete_ssid_from_ap_list(configured_ap_list.at(json_buffer["id"].as<int>()).first)) {
