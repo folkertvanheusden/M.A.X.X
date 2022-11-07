@@ -2,6 +2,7 @@ import * as Api from './api.js'
 import { $, $$ } from './dom.js'
 import { meter, properties, snack, table } from './components.js'
 
+snack('Loading', 'text')
 
 // TODO decouple gui <-> api
 
