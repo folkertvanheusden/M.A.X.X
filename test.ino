@@ -38,7 +38,11 @@ void setup() {
 
 			cw.configure_aps();
 
+#if defined(ESP32)
+			ESP.restart();
+#else
 			ESP.reset();
+#endif
 		}
 
 		// see what we can see
@@ -53,7 +57,11 @@ void setup() {
 		printf("configure_aps\r\n");
 		cw.configure_aps();
 
+#if defined(ESP32)
+		ESP.restart();
+#else
 		ESP.reset();
+#endif
 	}
 }
 

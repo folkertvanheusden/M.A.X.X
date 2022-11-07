@@ -142,14 +142,19 @@ void configure_wifi::request_wifi_status(WiFiClient & client)
 
 	json_doc["hostname"]      = WiFi.getHostname();
 
+#if defined(ESP32)
+	json_doc["free-heap"]     = ESP.getMinFreeHeap();
+	json_doc["heap-size"]     = ESP.getHeapSize();
+#else
 	uint32_t free = 0;
 	uint16_t max  = 0;
 	uint8_t  frag = 0;
 	ESP.getHeapStats(&free, &max, &frag);
 
-	json_doc["getHeapSize"]   = max;
-	json_doc["freeHeap"]      = free;
+	json_doc["heap-size"]     = max;
+	json_doc["free-heap"]     = free;
 	json_doc["fragmentation"] = frag;
+#endif
 
 	serializeJson(json_doc, client);
 }
