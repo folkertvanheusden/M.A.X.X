@@ -22,47 +22,53 @@ void setup() {
 
 	enable_wifi_debug();
 
-	start_wifi("test123");  // enable wifi with AP (empty string for no wifi)
+	scan_access_points_start();
 
 	if (!LittleFS.begin())
 		printf("LittleFS.begin() failed\r\n");
 
 	configure_wifi cw;
 
+	if (cw.is_configured() == false) {
+		start_wifi("test123");  // enable wifi with AP (empty string for no AP)
+
+		cw.configure_aps();
+	}
+	else {
+		start_wifi("");
+	}
+
+	// see what we can see
+	printf("scan\r\n");
+	auto available_access_points = scan_access_points();
+
+	// try to connect
+	printf("connect\r\n");
+
+	auto state = try_connect_init(cw.get_targets(), available_access_points, 300, progress_indicator);
+
+	connect_status_t cs = CS_IDLE;
+
 	for(;;) {
-		printf("load_configured_ap_list\r\n");
-		// anything configured?
-		if (cw.is_configured() == false) {
-			// no, start softap
-			printf("configure_aps\r\n");
+		cs = try_connect_tick(state);
 
-			cw.configure_aps();
-
-#if defined(ESP32)
-			ESP.restart();
-#else
-			ESP.reset();
-#endif
-		}
-
-		// see what we can see
-		printf("scan\r\n");
-		auto available_access_points = scan_access_points();
-		// try to connect
-		printf("connect\r\n");
-		if (try_connect(cw.get_targets(), available_access_points, 300, progress_indicator))
+		if (cs != CS_IDLE)
 			break;
 
-		// could not connect, (re-)configure
-		printf("configure_aps\r\n");
-		cw.configure_aps();
+		delay(100);
+	}
 
+	// could not connect, restart esp
+	// you could also re-run the portal
+	if (cs == CS_FAILURE) {
 #if defined(ESP32)
 		ESP.restart();
 #else
 		ESP.reset();
 #endif
 	}
+
+	// connected!
 }
 
 void loop() {

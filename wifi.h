@@ -40,9 +40,29 @@ std::map<std::string, std::tuple<int, uint8_t, int> >
 // targets: ssid, password
 // timeout in number of 100ms intervals per target
 // callback: interval_nr, max_nr_set, can return false to abort
-bool                       try_connect                 (const std::vector<std::pair<std::string, std::string> > & targets,
+typedef struct {
+	std::vector<std::tuple<std::string, std::string, int> > use;
+
+	int      timeout;
+
+	size_t   nr;
+
+	int      waiting_nr;
+
+	bool     connecting_state;
+
+	uint32_t last_tick;
+
+	std::optional<std::function<bool(const int, const int, const std::string &)> > progress_indicator;
+} connect_state_t;
+
+// start trying to connect
+connect_state_t            try_connect_init            (const std::vector<std::pair<std::string, std::string> > & targets,
 							const std::map<std::string, std::tuple<int, uint8_t, int> > & scan_results,
 							const int timeout,
-							std::function<bool(const int, const int, const std::string & )> progress_indicator);
+							std::optional<std::function<bool(const int, const int, const std::string & )> > progress_indicator);
+
+// non-blocking check to see if we're connected (CS_CONNECTED or CS_FAILURE) or still connection (CS_IDLE)
+connect_status_t           try_connect_tick            (connect_state_t & cs);
 
 bool                       wifi_disconnect             ();

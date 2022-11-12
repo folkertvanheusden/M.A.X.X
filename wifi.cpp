@@ -93,45 +93,48 @@ std::optional<std::string> select_best_access_point(const std::map<std::string, 
 	return best_ssid;
 }
 
-bool try_connect(const std::vector<std::pair<std::string, std::string> > & targets,
+connect_state_t try_connect_init(const std::vector<std::pair<std::string, std::string> > & targets,
 	 	 const std::map<std::string, std::tuple<int, uint8_t, int> > & scan_results,
 		 const int timeout,
-		 std::function<bool(const int, const int, const std::string &)> progress_indicator)
+		 std::optional<std::function<bool(const int, const int, const std::string &)> > progress_indicator)
 {
-	// scan through selected & scan-results and order by signal strength
-	std::vector<std::tuple<std::string, std::string, int> > use;
+	connect_state_t cs;
+	cs.timeout            = timeout;
+	cs.nr                 = 0;
+	cs.waiting_nr         = 0;
+	cs.connecting_state   = 0;
+	cs.last_tick          = 0;
+	cs.progress_indicator = progress_indicator;
 
+	// scan through selected & scan-results and order by signal strength
 	for(auto & target : targets) {
 		auto scan_result = scan_results.find(target.first);
 
 		if (scan_result != scan_results.end())
-			use.push_back({ target.first, target.second, std::get<0>(scan_result->second) });
+			cs.use.push_back({ target.first, target.second, std::get<0>(scan_result->second) });
 	}
 
-	std::sort(use.begin(), use.end(), [](auto & a, auto & b) { return std::get<2>(b) < std::get<2>(a); });
+	std::sort(cs.use.begin(), cs.use.end(), [](auto & a, auto & b) { return std::get<2>(b) < std::get<2>(a); });
 
-	size_t nr               = 0;
+	return cs;
+}
 
-	int    waiting_nr       = 0;
+connect_status_t try_connect_tick(connect_state_t & cs)
+{
+	connect_status_t rc { CS_IDLE };
 
-	bool   connecting_state = 0;
-
-        bool   ok               = false;
-
-	while(nr < targets.size()) {
-		bool sleep = false;
-
-		if (connecting_state == false) {
+	if (cs.nr < cs.use.size()) {
+		if (cs.connecting_state == false) {
 			if (debug)
-				printf("Connecting to %s\r\n", std::get<0>(use.at(nr)).c_str());
+				printf("Connecting to %s\r\n", std::get<0>(cs.use.at(cs.nr)).c_str());
 
-			if (connect_to_access_point(std::get<0>(use.at(nr)), std::get<1>(use.at(nr)))) {
-				connecting_state = true;
+			if (connect_to_access_point(std::get<0>(cs.use.at(cs.nr)), std::get<1>(cs.use.at(cs.nr)))) {
+				cs.connecting_state = true;
 
-				waiting_nr       = 0;
+				cs.waiting_nr       = 0;
 			}
 			else {
-				nr++;
+				cs.nr++;
 			}
 		}
 		else {
@@ -141,52 +144,58 @@ bool try_connect(const std::vector<std::pair<std::string, std::string> > & targe
 				if (debug)
 					printf("Connected\r\n");
 
-				progress_indicator(100, 100, std::get<0>(use.at(nr)));
+				if (cs.progress_indicator.has_value())
+					cs.progress_indicator.value()(100, 100, std::get<0>(cs.use.at(cs.nr)));
 
-				ok = true;
-
-				break;
+				return CS_CONNECTED;
 			}
 
-			if (waiting_nr >= timeout) {
+			if (cs.waiting_nr >= cs.timeout) {
 				if (debug)
 					printf("timeout\r\n");
 
-				nr++;
+				cs.nr++;
 
-				connecting_state = false;
+				cs.connecting_state = false;
 
-				continue;
+				return CS_IDLE;
 			}
 
 			if (status == CS_FAILURE) {
 				if (debug)
 					printf("Connection failed\r\n");
 
-				nr++;
+				cs.nr++;
 
 				wifi_disconnect();
 
-				connecting_state = false;
-			}
-			else {
-				sleep = true; // no error, just waiting
+				cs.connecting_state = false;
 			}
 		}
 
-		if (nr < targets.size() && progress_indicator(nr * timeout + waiting_nr, targets.size() * timeout, std::get<0>(use.at(nr))) == false)
-			break;
+		if (cs.nr < cs.use.size() && 
+			cs.progress_indicator.has_value() &&
+			cs.progress_indicator.value()(cs.nr * cs.timeout + cs.waiting_nr, cs.use.size() * cs.timeout, std::get<0>(cs.use.at(cs.nr))) == false)
+			rc = CS_FAILURE;
 
-		if (sleep)
-			delay(100);
+		if (rc != CS_FAILURE) {
+			uint32_t now = millis();
 
-		waiting_nr++;
+			if (now - cs.last_tick >= 100) {
+				cs.last_tick = now;
+
+				cs.waiting_nr++;
+			}
+		}
+	}
+	else {
+		rc = CS_FAILURE;
 	}
 	
-	if (!ok)
-		progress_indicator(0, 100, "");
+	if (rc == CS_FAILURE && cs.progress_indicator.has_value())
+		cs.progress_indicator.value()(0, 100, "");
 
-	return ok;
+	return rc;
 }
 
 bool wifi_disconnect()
