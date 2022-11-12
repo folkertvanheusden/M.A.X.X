@@ -36,9 +36,12 @@ void enable_wifi_debug()
 
 void scan_access_points_start()
 {
-	WiFi.scanDelete();
-
 	WiFi.scanNetworks(true);
+}
+
+void scan_access_points_cleanup()
+{
+	WiFi.scanDelete();
 }
 
 bool scan_access_points_wait()
@@ -55,6 +58,8 @@ std::map<std::string, std::tuple<int, uint8_t, int> > scan_access_points_get()
 	for(int i=0; i<n_networks; i++)
 		out.insert({ WiFi.SSID(i).c_str(), { WiFi.RSSI(i), WiFi.encryptionType(i), WiFi.channel(i) } });
 
+	scan_access_points_cleanup();
+
 	return out;
 }
 
@@ -70,7 +75,8 @@ connect_status_t check_wifi_connection_status()
 {
 	auto status = WiFi.status();
 
-	printf("wifi status: %d\r\n", status);
+	if (debug)
+		printf("wifi status: %d\r\n", status);
 
 	if (status == WL_CONNECTED)
 		return CS_CONNECTED;

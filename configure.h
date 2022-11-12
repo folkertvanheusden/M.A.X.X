@@ -22,6 +22,8 @@ class configure_wifi
 private:
 	std::vector<std::pair<std::string, std::string> > configured_ap_list;
 
+	bool has_triggered_scan        { false };
+
 	bool load_configured_ap_list();
 	bool save_configured_ap_list();
 

@@ -161,6 +161,12 @@ void configure_wifi::basic_response(AsyncWebServerRequest * client, const int co
 
 void configure_wifi::request_wifi_scan(AsyncWebServerRequest * client)
 {
+	if (!has_triggered_scan) {
+		scan_access_points_start();
+
+		has_triggered_scan = true;
+	}
+
 	if (scan_access_points_wait()) {
 		auto aps_visible = scan_access_points_get();
 
@@ -185,6 +191,8 @@ void configure_wifi::request_wifi_scan(AsyncWebServerRequest * client)
 
 			client->send(response);
 		}
+
+		has_triggered_scan = false;
 	}
 	else {
 		basic_response(client, 200, "application/json", "{\"status\":\"scanning\"}");
