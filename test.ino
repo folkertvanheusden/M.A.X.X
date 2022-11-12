@@ -22,6 +22,11 @@ void setup() {
 
 	enable_wifi_debug();
 
+<<<<<<< HEAD
+=======
+	scan_access_points_start();
+
+>>>>>>> asyncweb
 	if (!LittleFS.begin())
 		printf("LittleFS.begin() failed\r\n");
 
@@ -59,6 +64,8 @@ void setup() {
 	// could not connect, restart esp
 	// you could also re-run the portal
 	if (cs == CS_FAILURE) {
+		Serial.println(F("Failed to connect."));
+
 #if defined(ESP32)
 		ESP.restart();
 #else
@@ -67,6 +74,7 @@ void setup() {
 	}
 
 	// connected!
+	Serial.println(F("Connected!"));
 }
 
 void loop() {

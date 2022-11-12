@@ -34,6 +34,13 @@ void                       start_wifi                  (const std::optional<std:
 bool                       set_hostname                (const std::string & hostname);
 
 // ssid, signal-strength (in dB) pairs / encryption-type / channel
+void                       scan_access_points_start    ();
+
+void                       scan_access_points_wait     ();
+
+std::map<std::string, std::tuple<int, uint8_t, int> >
+                           scan_access_points_get      ();
+
 std::map<std::string, std::tuple<int, uint8_t, int> >
 			   scan_access_points          ();
 

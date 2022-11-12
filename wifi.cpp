@@ -34,22 +34,51 @@ void enable_wifi_debug()
 	debug = true;
 }
 
-std::map<std::string, std::tuple<int, uint8_t, int> > scan_access_points()
+void scan_access_points_start()
+{
+	WiFi.scanNetworks(true);
+}
+
+void scan_access_points_wait()
+{
+	for(;;) {
+		int rc = WiFi.scanComplete();
+
+		if (rc == -1)
+			scan_access_points_start();
+
+		if (rc >= 0)
+			break;
+
+		delay(100);
+	}
+}
+
+std::map<std::string, std::tuple<int, uint8_t, int> > scan_access_points_get()
 {
 	std::map<std::string, std::tuple<int, uint8_t, int> > out;
 
-	WiFi.scanDelete();
-
-	int n_networks = WiFi.scanNetworks();
+	int n_networks = WiFi.scanComplete();
 
 	for(int i=0; i<n_networks; i++) {
 		out.insert({ WiFi.SSID(i).c_str(), { WiFi.RSSI(i), WiFi.encryptionType(i), WiFi.channel(i) } });
 
 		if (debug)
-			printf("%s: %d\r\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+			printf("[%2d] %s: %d\r\n", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i));
 	}
 
+	WiFi.scanDelete();
+
 	return out;
+}
+
+std::map<std::string, std::tuple<int, uint8_t, int> > scan_access_points()
+{
+	scan_access_points_start();
+
+	scan_access_points_wait();
+
+	return scan_access_points_get();
 }
 
 bool connect_to_access_point(const std::string ssid, const std::string password)

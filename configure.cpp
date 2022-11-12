@@ -9,6 +9,9 @@
 #include "wifi.h"
 
 
+static const std::string name = "M.A.X.X - by vanheusden.com";
+
+
 configure_wifi::configure_wifi()
 {
 	load_configured_ap_list();
@@ -121,23 +124,8 @@ bool configure_wifi::add_ssid_to_ap_list(const std::string & ssid, const std::st
 	return true;
 }
 
-void configure_wifi::http_header(WiFiClient & client, const int code, const String & mime_type)
+void configure_wifi::request_wifi_status(AsyncWebServerRequest * client)
 {
-	client.print("HTTP/1.0 ");
-	client.print(code);
-	client.print("\r\n");
-
-	client.print("Server: M.A.X.X - by vanheusden.com\r\n");
-
-	client.print("Content-Type: " + mime_type + "\r\n");
-
-	client.print("\r\n");
-}
-
-void configure_wifi::request_wifi_status(WiFiClient & client)
-{
-	http_header(client, 200, "application/json");
-
 	StaticJsonDocument<1024> json_doc;
 
 	json_doc["hostname"]      = WiFi.getHostname();
@@ -156,14 +144,28 @@ void configure_wifi::request_wifi_status(WiFiClient & client)
 	json_doc["fragmentation"] = frag;
 #endif
 
-	serializeJson(json_doc, client);
+	AsyncResponseStream *response = client->beginResponseStream("application/json");
+	response->addHeader("Server", name.c_str());
+	serializeJson(json_doc, *response);
+	client->send(response);
 }
 
-void configure_wifi::request_wifi_scan(WiFiClient & client)
+void configure_wifi::basic_response(AsyncWebServerRequest * client, const int code, const std::string & mime_type, const std::string & text)
 {
-	auto aps_visible = scan_access_points();
+	AsyncWebServerResponse *response = client->beginResponse(code, mime_type.c_str(), text.c_str());
 
-	StaticJsonDocument<1024> json_doc;
+	response->addHeader("Server", name.c_str());
+
+	client->send(response);
+}
+
+void configure_wifi::request_wifi_scan(AsyncWebServerRequest * client)
+{
+	scan_access_points_wait();
+
+	auto aps_visible = scan_access_points_get();
+
+	StaticJsonDocument<2048> json_doc;
 
 	for(auto & ap : aps_visible) {
 		JsonObject entry = json_doc.createNestedObject();
@@ -174,12 +176,13 @@ void configure_wifi::request_wifi_scan(WiFiClient & client)
 		entry["channel"]        = std::get<2>(ap.second);
 	}
 
-	http_header(client, 200, "application/json");
-
-	serializeJson(json_doc, client);
+	AsyncResponseStream *response = client->beginResponseStream("application/json");
+	response->addHeader("Server", name.c_str());
+	serializeJson(json_doc, *response);
+	client->send(response);
 }
 
-void configure_wifi::request_configured_ap_list(WiFiClient & client)
+void configure_wifi::request_configured_ap_list(AsyncWebServerRequest * client)
 {
 	StaticJsonDocument<1024> json_doc;
 
@@ -191,96 +194,45 @@ void configure_wifi::request_configured_ap_list(WiFiClient & client)
 		entry["apPass"] = configured_ap_list.at(i).second.empty() ? false : true;
 	}
 
-	http_header(client, 200, "application/json");
-
 	if (configured_ap_list.empty() == true)
-		client.write("[]");
-	else
-		serializeJson(json_doc, client);
+		basic_response(client, 200, "application/json", "[]");
+	else {
+		AsyncResponseStream *response = client->beginResponseStream("application/json");
+		response->addHeader("Server", name.c_str());
+		serializeJson(json_doc, *response);
+		client->send(response);
+	}
 }
 
-void configure_wifi::request_add_app(WiFiClient & client, const String & json_string)
+void configure_wifi::request_add_ap(AsyncWebServerRequest * client, const JsonVariant & json_buffer)
 {
-	StaticJsonDocument<256> json_buffer;
-	deserializeJson(json_buffer, json_string.c_str());
-
 	if (add_ssid_to_ap_list(json_buffer["apName"].as<std::string>(), json_buffer["apPass"].as<std::string>())) {
 		if (save_configured_ap_list()) {
-			http_header(client, 200, "application/json");
-
-			client.write("{\"message\":\"New AP added\"}");
+			basic_response(client, 200, "application/json", "{\"message\":\"New AP added\"}");
 
 			return;
 		}
 	}
 
-	http_header(client, 500, "application/json");
-
-	client.write("{\"message\":\"New AP not added due to some error\"}");
+	basic_response(client, 500, "application/json", "{\"message\":\"New AP not added due to some error\"}");
 }
 
-void configure_wifi::request_del_app(WiFiClient & client, const String & json_string)
+void configure_wifi::request_del_ap(AsyncWebServerRequest * client, const JsonVariant & json_buffer)
 {
-	StaticJsonDocument<256> json_buffer;
-	deserializeJson(json_buffer, json_string.c_str());
-
 	if (delete_ssid_from_ap_list(configured_ap_list.at(json_buffer["id"].as<int>()).first)) {
 		if (save_configured_ap_list()) {
-			http_header(client, 200, "application/json");
-
-			client.write("{\"message\":\"AP deleted\"}");
+			basic_response(client, 200, "application/json", "{\"message\":\"AP deleted\"}");
 
 			return;
 		}
 	}
 
-	http_header(client, 500, "application/json");
-
-	client.write("{\"message\":\"New AP not deleted due to some error\"}");
+	basic_response(client, 500, "application/json", "{\"message\":\"AP not deleted due to some error\"}");
 }
 
-void configure_wifi::request_some_file(WiFiClient & client, const String & url)
+void configure_wifi::request_stop(AsyncWebServerRequest * client)
 {
-	Serial.print(F("Serve static file: "));
-	Serial.println(url);
-
-	String mime_type = "text/html";
-
-	int dot          = url.lastIndexOf('.');
-	
-	if (dot != -1) {
-		String ext = url.substring(dot);
-
-		if (ext == ".js")
-			mime_type = "text/javascript";
-		else if (ext == ".css")
-			mime_type = "text/css";
-	}
-
-	// TODO: path sanity checks
-	File dataFile = LittleFS.open(url, "r");
-
-	if (!dataFile) {
-		Serial.println(F("404"));
-
-		http_header(client, 404, "text/html");
-		client.write("???");
-
-		return;
-	}
-
-	http_header(client, 200, mime_type);
-
-	client.write(dataFile);
-
-	dataFile.close();
-}
-
-void configure_wifi::request_stop(WiFiClient & client)
-{
-	http_header(client, 200, "application/json");
-
-	client.write("{ \"message\":\"Activating new configuration...\" }");
+	basic_response(client, 200, "application/json", "{\"message\":\"Activating new configuration...\"}");
 }
 
 bool configure_wifi::configure_aps()
@@ -293,105 +245,46 @@ bool configure_wifi::configure_aps()
 	WiFi.setSleep(false);
 #endif
 
-	WiFiServer server(80);
+	AsyncWebServer server(80);
+
+	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+			request->redirect("/gui.html");
+		});
+
+	server.on("/api/wifi/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+			request_wifi_status(request);
+		});
+
+	server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request){
+			request_wifi_scan(request);
+		});
+
+	server.on("/api/wifi/configlist", HTTP_GET, [this](AsyncWebServerRequest *request){
+			request_configured_ap_list(request);
+		});
+
+	server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi/add", [this](AsyncWebServerRequest *request, JsonVariant &json) {
+					request_add_ap(request, json);
+				}));
+
+	server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi/id", [this](AsyncWebServerRequest *request, JsonVariant &json) {
+					request_del_ap(request, json);
+				}));
+
+	server.on("/api/wifi/softAp/stop", HTTP_GET, [this, &rc](AsyncWebServerRequest *request) {
+			printf("Request to switch to run mode\r\n");
+
+			request_stop(request);
+
+			rc = true;
+		});
+
+	server.serveStatic("/", LittleFS, "/");
 
 	server.begin();
 
-	server.setNoDelay(true);
-
-	for(;;) {
-		WiFiClient client = server.available();
-
-		if (!client) {  // server.accept is not blocking
-			delay(10);
-
-			continue;
-		}
-
-		// ignore request headers & retrieve rest data
-		String json_string;
-		String request;
-		bool   header      = true;
-
-		while (client.available() > 0 || header) {
-			String line = client.readStringUntil('\r');
-
-			if (header && request.isEmpty()) {
-				request = line;
-
-#if defined(ESP32)
-				client.setTimeout(1);  // in seconds...
-#else
-				client.setTimeout(100);  // in milliseconds
-#endif
-			}
-			else if (line.length() == 1 && line[0] == '\n' && header)
-				header = false;
-			else if (!header) {
-				json_string += line;
-			}
-
-			yield();
-		}
-
-		String cmd;
-		String url;
-
-		int    space = request.indexOf(' ');
-		if (space != -1) {
-			cmd = request.substring(0, space);
-
-			url = request.substring(space + 1);
-
-			space = url.indexOf(' ');
-
-			if (space != -1)
-				url = url.substring(0, space);
-		}
-
-		Serial.print(millis());
-		Serial.print(' ');
-		Serial.println(url);
-
-		if (url == "/api/wifi/status") {
-			request_wifi_status(client);
-		}
-		else if (url == "/api/wifi/scan") {
-			request_wifi_scan(client);
-		}
-		else if (url == "/api/wifi/configlist") {
-			request_configured_ap_list(client);
-		}
-		else if (url == "/api/wifi/add" && cmd == "POST") {
-			request_add_app(client, json_string);
-		}
-		else if (url == "/api/wifi/id" && cmd == "DELETE") {
-			request_del_app(client, json_string);
-		}
-		else if (url == "/api/wifi/softAp/stop") {
-			printf("Request to switch to run mode\r\n");
-
-			request_stop(client);
-
-			client.stop();
-
-			delay(1000);
-
-			rc = true;
-
-			break;
-		}
-		else if (url == "/" && cmd == "GET")
-			request_some_file(client, "/gui.html");
-		else {
-			if (url[0] != '/')
-				url = "/" + url;
-
-			request_some_file(client, url);
-		}
-
-		client.stop();
-	}
+	while(rc == false)
+		delay(100);
 
 #if defined(ESP32)
 	WiFi.setSleep(prev_sleep_mode);

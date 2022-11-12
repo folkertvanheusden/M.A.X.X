@@ -61,7 +61,7 @@ const renderSaved = configured => table($('.saved'), configured.map(mapper1), {
         renderSaved(await Api.configured())
     }
 }, `Last update ${lastUpdate()}`)
-setTimeout(async () => renderSaved(await Api.configured()), 1 * 1500)
+setInterval(async () => renderSaved(await Api.configured()), 2500)
 renderSaved(configured)
 
 
@@ -76,14 +76,6 @@ const mapper2 = l => ({
     rssi: l.rssi + ' dbm',
 })
 
-function myadd(a, p) {
-	const result = Api.add(a, p)
-
-	setTimeout(async () => renderSaved(await Api.configured()), 500)
-
-	return result
-}
-
 const renderScanned = scanned => table($('.available'), scanned.map(mapper2), {
     // TODO see https://github.com/MartinVerges/womolin-waterlevel/blob/main/ui/src/routes/wifi.svelte
     //          (it has 2 modi; 1) add unknown ssid + password (if any) 2) add ssid + password for a known network
@@ -92,7 +84,7 @@ const renderScanned = scanned => table($('.available'), scanned.map(mapper2), {
         const apName = row.ssid
         const apPass = prompt(`Password for ${apName}`)
 
-        const result = await myadd(apName, apPass)
+        const result = await Api.add(apName, apPass)
         snack(result.message, 'text')
 
         renderScanned(await Api.scan())

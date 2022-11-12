@@ -2,6 +2,16 @@
 #include <utility>
 #include <vector>
 
+#include <AsyncJson.h>
+
+#if defined(ESP32)
+#include <AsyncTCP.h>
+#else
+#include <ESPAsyncTCP.h>
+#endif
+
+#include <ESPAsyncWebServer.h>
+
 #include "wifi.h"
 
 
@@ -15,18 +25,17 @@ private:
 	bool load_configured_ap_list();
 	bool save_configured_ap_list();
 
-	bool add_ssid_to_ap_list     (const std::string & ssid, const std::string & password);
-	bool delete_ssid_from_ap_list(const std::string & ssid);
+	bool add_ssid_to_ap_list       (const std::string & ssid, const std::string & password);
+	bool delete_ssid_from_ap_list  (const std::string & ssid);
 
-	void http_header(WiFiClient & client, const int code, const String & mime_type);
+	void basic_response            (AsyncWebServerRequest *client, const int code, const std::string & mime_type, const std::string & text);
 
-	void request_add_app           (WiFiClient & client, const String & json_string);
-	void request_configured_ap_list(WiFiClient & client);
-	void request_del_app           (WiFiClient & client, const String & json_string);
-	void request_some_file         (WiFiClient & client, const String & url);
-	void request_stop              (WiFiClient & client);
-	void request_wifi_scan         (WiFiClient & client);
-	void request_wifi_status       (WiFiClient & client);
+	void request_add_ap            (AsyncWebServerRequest *client, const JsonVariant & json_string);
+	void request_configured_ap_list(AsyncWebServerRequest *client);
+	void request_del_ap            (AsyncWebServerRequest *client, const JsonVariant & json_string);
+	void request_stop              (AsyncWebServerRequest *client);
+	void request_wifi_scan         (AsyncWebServerRequest *client);
+	void request_wifi_status       (AsyncWebServerRequest *client);
 
 public:
 	configure_wifi();
