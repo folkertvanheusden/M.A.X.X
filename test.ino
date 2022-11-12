@@ -22,11 +22,8 @@ void setup() {
 
 	enable_wifi_debug();
 
-<<<<<<< HEAD
-=======
 	scan_access_points_start();
 
->>>>>>> asyncweb
 	if (!LittleFS.begin())
 		printf("LittleFS.begin() failed\r\n");
 
