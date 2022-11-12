@@ -24,9 +24,9 @@ const status = async () => request(`${endpoint}/status`)
 
 const add = async (apName, apPass) => request(`${endpoint}/add`, Method.Post, { apName, apPass })
 
-const deleteById = async id => request(`${endpoint}/id`, Method.Delete, { id })
+const deleteById = async id => request(`${endpoint}/id`, Method.Post, { id })
 
-const deleteByApName = async apName => request(`${endpoint}/apName`, Method.Delete, { apName })
+const deleteByApName = async apName => request(`${endpoint}/apName`, Method.Post, { apName })
 
 export const actions = {
     start: async () => request(`${endpoint}/softAp/stop`, Method.Post),

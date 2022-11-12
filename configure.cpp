@@ -288,7 +288,7 @@ bool configure_wifi::configure_aps()
 					request_del_ap(request, json);
 				}));
 
-	server.on("/api/wifi/softAp/stop", HTTP_GET, [this, &rc](AsyncWebServerRequest *request) {
+	server.on("/api/wifi/softAp/stop", HTTP_POST, [this, &rc](AsyncWebServerRequest *request) {
 			printf("Request to switch to run mode\r\n");
 
 			request_stop(request);
