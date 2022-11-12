@@ -22,8 +22,6 @@ void setup() {
 
 	enable_wifi_debug();
 
-	scan_access_points_start();
-
 	if (!LittleFS.begin())
 		printf("LittleFS.begin() failed\r\n");
 
