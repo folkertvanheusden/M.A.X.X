@@ -113,4 +113,15 @@ const renderScanned = scanned => table($('.available'), scanned.map(mapper2), {
 // currently not an issue (the list will be loaded eventually after a few retries)
 setInterval(async () => renderScanned(await Api.scan()), 5 * 60 * 1000)
 
-renderScanned(scanned)
+async() => {
+	for(;;) {
+		var data = Api.scan()
+
+		if (data.status != 'scanning') {
+			renderScanned(data)
+			break
+		}
+
+		await new Promise(resolve => setTimeout(resolve, 500))
+	}
+}
