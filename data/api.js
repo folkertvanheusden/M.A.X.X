@@ -30,6 +30,7 @@ const deleteByApName = async apName => request(`${endpoint}/apName`, Method.Dele
 
 export const actions = {
     start: async () => request(`${endpoint}/softAp/stop`, Method.Post),
+    scan:  async () => request(`${endpoint}/scan`),
 }
 
 export { configured, scan, status, add, deleteById, deleteByApName }

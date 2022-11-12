@@ -239,8 +239,6 @@ bool configure_wifi::configure_aps()
 {
 	bool       rc     = false;
 
-	scan_access_points_start();
-
 #if defined(ESP32)
 	auto       prev_sleep_mode = WiFi.getSleep();
 
