@@ -176,10 +176,16 @@ void configure_wifi::request_wifi_scan(AsyncWebServerRequest * client)
 		entry["channel"]        = std::get<2>(ap.second);
 	}
 
-	AsyncResponseStream *response = client->beginResponseStream("application/json");
-	response->addHeader("Server", name.c_str());
-	serializeJson(json_doc, *response);
-	client->send(response);
+	if (aps_visible.empty())
+		basic_response(client, 200, "application/json", "[]");
+	else {
+		AsyncResponseStream *response = client->beginResponseStream("application/json");
+		response->addHeader("Server", name.c_str());
+
+		serializeJson(json_doc, *response);
+
+		client->send(response);
+	}
 }
 
 void configure_wifi::request_configured_ap_list(AsyncWebServerRequest * client)
