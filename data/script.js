@@ -94,5 +94,18 @@ const renderScanned = scanned => table($('.available'), scanned.map(mapper2), {
 // TODO handle scanning (test file: scanning, 200 ok) vs list (test file: scan, 200 ok)
 // simulate by copying contents of file 'scanning' to file 'scan'
 // currently not an issue (the list will be loaded eventually after a few retries)
-setInterval(async () => renderScanned(await Api.scan()), 5 * 60 * 1000)
+setInterval(async () => {
+	console.log("scan invoked");
+	for(;;) {
+		var data = await Api.scan()
+		console.log(data)
+		if (data.status != 'scanning') {
+			console.log("data received")
+			renderScanned(data)
+			break
+		}
+		await new Promise(resolve => setTimeout(resolve, 500))
+	}
+}, 1000)
+
 renderScanned(scanned)

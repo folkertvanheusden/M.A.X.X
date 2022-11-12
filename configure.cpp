@@ -161,30 +161,33 @@ void configure_wifi::basic_response(AsyncWebServerRequest * client, const int co
 
 void configure_wifi::request_wifi_scan(AsyncWebServerRequest * client)
 {
-	scan_access_points_wait();
+	if (scan_access_points_wait()) {
+		auto aps_visible = scan_access_points_get();
 
-	auto aps_visible = scan_access_points_get();
+		StaticJsonDocument<2048> json_doc;
 
-	StaticJsonDocument<2048> json_doc;
+		for(auto & ap : aps_visible) {
+			JsonObject entry = json_doc.createNestedObject();
 
-	for(auto & ap : aps_visible) {
-		JsonObject entry = json_doc.createNestedObject();
+			entry["ssid"]           = ap.first;
+			entry["rssi"]           = std::get<0>(ap.second);
+			entry["encryptionType"] = std::get<1>(ap.second);
+			entry["channel"]        = std::get<2>(ap.second);
+		}
 
-		entry["ssid"]           = ap.first;
-		entry["rssi"]           = std::get<0>(ap.second);
-		entry["encryptionType"] = std::get<1>(ap.second);
-		entry["channel"]        = std::get<2>(ap.second);
+		if (aps_visible.empty())
+			basic_response(client, 200, "application/json", "[]");
+		else {
+			AsyncResponseStream *response = client->beginResponseStream("application/json");
+			response->addHeader("Server", name.c_str());
+
+			serializeJson(json_doc, *response);
+
+			client->send(response);
+		}
 	}
-
-	if (aps_visible.empty())
-		basic_response(client, 200, "application/json", "[]");
 	else {
-		AsyncResponseStream *response = client->beginResponseStream("application/json");
-		response->addHeader("Server", name.c_str());
-
-		serializeJson(json_doc, *response);
-
-		client->send(response);
+		basic_response(client, 200, "application/json", "{\"status\":\"scanning\"}");
 	}
 }
 

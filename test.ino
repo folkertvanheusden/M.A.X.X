@@ -40,7 +40,12 @@ void setup() {
 
 	// see what we can see
 	printf("scan\r\n");
-	auto available_access_points = scan_access_points();
+	scan_access_points_start();
+
+	while(scan_access_points_wait() == false)
+		delay(100);
+
+	auto available_access_points = scan_access_points_get();
 
 	// try to connect
 	printf("connect\r\n");
