@@ -7,6 +7,8 @@ Pull requests are welcome! (or patches by e-mail)
 
 Screenshot:
 
+(the 'www.vanheusden.com' is the name of my access-point)
+
 ![(screenshot)](images/M.A.X.X-screenshot001.png)
 
 The external dependencies are "ArduinoJson" and "ESPAsyncWebServer" (see platformio.ini).
