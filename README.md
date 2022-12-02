@@ -1,4 +1,4 @@
-M.A.X.X is a wifi manager for the ESP. It allows more than one access point to be configured.
+M.A.X.X is a wifi manager for the ESP32 and ESP8266. It allows more than one access point to be configured.
 
 See test.ino for a usage example.
 
