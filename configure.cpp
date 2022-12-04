@@ -288,13 +288,16 @@ bool configure_wifi::configure_aps()
 					request_del_ap(request, json);
 				}));
 
-	server.on("/api/wifi/softAp/stop", HTTP_POST, [this, &rc](AsyncWebServerRequest *request) {
-			printf("Request to switch to run mode\r\n");
+	server.on("/api/wifi/softAp/stop", HTTP_POST, [this](AsyncWebServerRequest *request) {
+			request->redirect("/finished.html");
+		});
 
-			request_stop(request);
+	server.on("/finished.html", HTTP_GET, [this, &rc](AsyncWebServerRequest *request) {
+			basic_response(request, 200, "text/html", "You can now close this browser window.");
 
 			rc = true;
 		});
+
 
 	server.serveStatic("/", LittleFS, "/");
 
