@@ -1,8 +1,9 @@
 {
   "name": "M.A.X.X",
-  "version": "1.0",
+  "version": "1.1",
   "description": "M.A.X.X is a wifi manager for the ESP32 and ESP8266. It allows more than one access point to be configured.",
   "keywords": "wifi, esp8266, esp32, multiple access points",
+  "headers": ["configure.h", "wifi.h"],
   "repository":
   {
     "type": "git",
