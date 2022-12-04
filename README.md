@@ -2,6 +2,8 @@ M.A.X.X is a wifi manager for the ESP32 and ESP8266. It allows more than one acc
 
 See test.ino for a usage example.
 
+Don't forget to run "pio run -t uploadfs" when you use platform.io! (or else include the 'data' directory in your project)
+
 Please note that this is not entirely finished albeit usuable.
 Pull requests are welcome! (or patches by e-mail)
 
