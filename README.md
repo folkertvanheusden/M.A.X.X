@@ -4,8 +4,11 @@ See test.ino for a usage example.
 
 Don't forget to run "pio run -t uploadfs" when you use platform.io! (or else include the 'data' directory in your project)
 
-Please note that this is not entirely finished albeit usuable.
-Pull requests are welcome! (or patches by e-mail)
+Also make sure you have this in the platformio.ini file:
+
+    build_flags = -std=gnu++17
+    build_unflags = -std=gnu++11
+
 
 Screenshot:
 
