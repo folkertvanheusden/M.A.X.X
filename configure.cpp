@@ -264,7 +264,7 @@ bool configure_wifi::configure_aps()
 
 	AsyncWebServer server(80);
 
-	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
 			request->redirect("/gui.html");
 		});
 
@@ -272,21 +272,13 @@ bool configure_wifi::configure_aps()
 			request_wifi_status(request);
 		});
 
-	server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request){
+	server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request) {
 			request_wifi_scan(request);
 		});
 
-	server.on("/api/wifi/configlist", HTTP_GET, [this](AsyncWebServerRequest *request){
+	server.on("/api/wifi/configlist", HTTP_GET, [this](AsyncWebServerRequest *request) {
 			request_configured_ap_list(request);
 		});
-
-	server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi/add", [this](AsyncWebServerRequest *request, JsonVariant &json) {
-					request_add_ap(request, json);
-				}));
-
-	server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi/id", [this](AsyncWebServerRequest *request, JsonVariant &json) {
-					request_del_ap(request, json);
-				}));
 
 	server.on("/api/wifi/softAp/stop", HTTP_POST, [this](AsyncWebServerRequest *request) {
 			request->redirect("/finished.html");
@@ -298,6 +290,13 @@ bool configure_wifi::configure_aps()
 			rc = true;
 		});
 
+	auto *add_handler = new AsyncCallbackJsonWebHandler("/api/wifi/add");
+	add_handler->onRequest([this](AsyncWebServerRequest *request, JsonVariant &json) { request_add_ap(request, json); });
+	server.addHandler(add_handler);
+
+	auto *del_handler = new AsyncCallbackJsonWebHandler("/api/wifi/id");
+	del_handler->onRequest([this](AsyncWebServerRequest *request, JsonVariant &json) { request_del_ap(request, json); });
+	server.addHandler(del_handler);
 
 	server.serveStatic("/", LittleFS, "/");
 
