@@ -19,7 +19,7 @@ Screenshot:
 The external dependencies are "ArduinoJson" and "ESPAsyncWebServer" (see platformio.ini).
 
 
---- Folkert van Heusden <mail@vanheusden.com>
+--- Folkert van Heusden <folkert@vanheusden.com>
 
 
 
