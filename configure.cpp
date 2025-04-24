@@ -252,7 +252,7 @@ void configure_wifi::request_stop(AsyncWebServerRequest * client)
 	basic_response(client, 200, "application/json", "{\"message\":\"Activating new configuration...\"}");
 }
 
-bool configure_wifi::configure_aps()
+bool configure_wifi::configure_aps(const int timeout)
 {
 	bool       rc     = false;
 
@@ -302,7 +302,8 @@ bool configure_wifi::configure_aps()
 
 	server.begin();
 
-	while(rc == false)
+	time_t start = time(nullptr);
+	while(rc == false && (timeout == -1 || time(nullptr) - start < timeout))
 		delay(100);
 
 #if defined(ESP32)

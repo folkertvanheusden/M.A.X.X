@@ -32,7 +32,7 @@ void setup() {
 	if (cw.is_configured() == false) {
 		start_wifi("test123");  // enable wifi with AP (empty string for no AP)
 
-		cw.configure_aps();
+		cw.configure_aps(300);  // 300 seconds timeout
 	}
 	else {
 		start_wifi("");

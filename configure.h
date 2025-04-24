@@ -47,5 +47,5 @@ public:
 
 	std::vector<std::pair<std::string, std::string> > get_targets() const;
 
-	bool configure_aps();
+	bool configure_aps(const int timeout);
 };
