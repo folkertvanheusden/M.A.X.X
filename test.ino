@@ -35,7 +35,7 @@ void setup() {
 		cw.configure_aps(300);  // 300 seconds timeout
 	}
 	else {
-		start_wifi("");
+		start_wifi({ });
 	}
 
 	// see what we can see
